@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>POS — Официант</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.09);
+    --text: #1a1a1a;
+    --text-muted: #888;
+    --green-bg: #d4f5e0;
+    --green-text: #1a6b3a;
+    --beige-bg: #f2e8d0;
+    --beige-text: #7a5a1a;
+    --accent: #1a1a1a;
+    --accent-text: #fff;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── PAGES ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── LOGIN ── */
+  #loginPage {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #loginPage.page { display: flex; }
+  #loginPage.page:not(.active) { display: none; }
+
+  .login-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border);
+    padding: 2rem;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .login-card h1 {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+    color: var(--text);
+  }
+
+  .field { margin-bottom: 12px; }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+  }
+
+  .field input {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border);
+    background: var(--bg);
+    font-size: 15px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field input:focus { border-color: rgba(0,0,0,0.3); }
+
+  .btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    margin-top: 4px;
+  }
+
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:active { opacity: 0.7; transform: scale(0.99); }
+
+  .error-msg {
+    color: #c0392b;
+    font-size: 13px;
+    margin-top: 10px;
+    min-height: 18px;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .topbar-left {
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+
+  .topbar-left strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .topbar-right {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-ghost {
+    background: none;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 7px 14px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-ghost:hover { background: var(--bg); }
+
+  /* ── MAIN PAGE ── */
+  .page-body { padding: 16px; max-width: 800px; margin: 0 auto; }
+
+  .section-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 20px 0 10px;
+  }
+
+  .tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .table-card {
+    background: var(--beige-bg);
+    color: var(--beige-text);
+    border-radius: var(--radius);
+    padding: 18px 12px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 0.5px solid transparent;
+    transition: transform 0.12s, box-shadow 0.12s;
+    user-select: none;
+  }
+
+  .table-card.open {
+    background: var(--green-bg);
+    color: var(--green-text);
+  }
+
+  .table-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .table-card:active { transform: scale(0.97); }
+
+  .table-card .table-name { font-size: 15px; margin-bottom: 4px; }
+  .table-card .table-status { font-size: 11px; opacity: 0.7; }
+
+  /* ── TABLE PAGE ── */
+  .table-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 12px;
+    align-items: start;
+  }
+
+  @media (max-width: 650px) {
+    .table-layout { grid-template-columns: 1fr; }
+  }
+
+  /* ── MENU PANEL ── */
+  .panel {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 0.5px solid var(--border);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 16px;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .panel-body { padding: 12px; }
+
+  .cat-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .cat-tab {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .cat-tab.active {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+  }
+
+  .menu-items {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+  }
+
+  .menu-item-name { font-size: 14px; }
+
+  .quick-btns {
+    display: flex;
+    gap: 4px;
+  }
+
+  .btn-quick {
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: 6px;
+    width: 32px;
+    height: 28px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-quick:hover { opacity: 0.75; }
+  .btn-quick:active { transform: scale(0.95); }
+
+  /* ── ORDER PANEL ── */
+  .order-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .order-item:last-child { border-bottom: none; }
+
+  .order-item-name {
+    flex: 1;
+    font-size: 13px;
+    padding-right: 8px;
+  }
+
+  .order-item-cat {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .order-qty-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-qty {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    transition: background 0.1s;
+  }
+
+  .btn-qty:hover { background: #e8e4da; }
+
+  .qty-val {
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 20px;
+    text-align: center;
+  }
+
+  .order-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 24px 0;
+  }
+
+  .order-actions {
+    padding: 12px;
+    display: flex;
+    gap: 8px;
+    border-top: 0.5px solid var(--border);
+  }
+
+  .btn-save {
+    flex: 1;
+    padding: 11px;
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    cursor: pointer;
+    color: var(--text);
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+
+  .btn-save:hover { background: #e8e4da; }
+
+  .btn-close-table {
+    flex: 1;
+    padding: 11px;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-close-table:hover { opacity: 0.82; }
+
+  /* ── PROFILE ── */
+  .profile-card {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .profile-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 14px;
+  }
+
+  .profile-row:last-child { border-bottom: none; }
+
+  .profile-row .label { color: var(--text-muted); }
+
+  /* ── LOADER ── */
+  .loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1a1a1a;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    z-index: 100;
+    transition: transform 0.25s ease;
+    pointer-events: none;
+  }
+
+  #toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage" class="page active">
+  <div class="login-card">
+    <h1>Вход</h1>
+    <div class="field">
+      <label>Логин</label>
+      <input type="text" id="inputLogin" placeholder="Введите логин" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Пароль</label>
+      <input type="password" id="inputPass" placeholder="Введите пароль" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Войти</button>
+    <div class="error-msg" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="mainPage" class="page">
+  <div class="topbar">
+    <div class="topbar-left">Привет, <strong id="topName"></strong></div>
+    <div class="topbar-right">
+      <button class="btn-ghost" onclick="showPage('profilePage')">Профиль</button>
+    </div>
+  </div>
+  <div class="page-body">
+    <div class="section-title">Открытые столы</div>
+    <div class="tables-grid" id="openTablesGrid"></div>
+    <div class="section-title">Все столы</div>
+    <div class="tables-grid" id="allTablesGrid"></div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div id="tablePage" class="page">
+  <div class="topbar">
+    <div class="topbar-left" id="tableTopTitle">Стол</div>
+    <div class="topbar-right">
+      <button class="btn-ghost" onclick="showPage('mainPage')">← Назад</button>
+    </div>
+  </div>
+  <div class="page-body">
+    <div class="table-layout">
+      <!-- MENU -->
+      <div class="panel">
+        <div class="panel-header">Меню</div>
+        <div class="panel-body">
+          <div class="cat-tabs" id="catTabs"></div>
+          <div class="menu-items" id="menuItems"></div>
+        </div>
+      </div>
+      <!-- ORDER -->
+      <div class="panel">
+        <div class="panel-header">Заказ</div>
+        <div class="panel-body" id="orderList"></div>
+        <div class="order-actions">
+          <button class="btn-save" onclick="saveOrder()">Сохранить</button>
+          <button class="btn-close-table" onclick="closeTable()">Закрыть стол</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div id="profilePage" class="page">
+  <div class="topbar">
+    <div class="topbar-left">Профиль</div>
+    <div class="topbar-right">
+      <button class="btn-ghost" onclick="showPage('mainPage')">← Назад</button>
+    </div>
+  </div>
+  <div class="page-body">
+    <div class="profile-card panel">
+      <div class="panel-body">
+        <div class="profile-row"><span class="label">Имя</span><span id="profName"></span></div>
+        <div class="profile-row"><span class="label">Логин</span><span id="profLogin"></span></div>
+        <div class="profile-row"><span class="label">Роль</span><span id="profRole"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_6Gn2Gifxlm06oQomQPebBJM0rFme13fw0iae4TtUwlAkczayEIdJ2O4Nof2mn8Qe/exec";
+
+let currentUser = null;
+let allTables = [];
+let menuData = [];
+let orders = {}; // tableId -> [{cat, name, qty}]
+let currentTableId = null;
+let activeCat = null;
+
+/* ── UTILS ── */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+async function apiFetch(type) {
+  const res = await fetch(`${SCRIPT_URL}?type=${type}`);
+  const text = await res.text();
+  try { return JSON.parse(text); }
+  catch(e) { throw new Error('Ошибка ответа сервера'); }
+}
+
+/* ── LOGIN ── */
+document.getElementById('inputPass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+async function doLogin() {
+  const login = document.getElementById('inputLogin').value.trim();
+  const pass = document.getElementById('inputPass').value.trim();
+  const errEl = document.getElementById('loginErr');
+  errEl.textContent = '';
+
+  if (!login || !pass) { errEl.textContent = 'Введите логин и пароль'; return; }
+
+  const btn = document.querySelector('#loginPage .btn-primary');
+  btn.textContent = 'Загрузка...';
+  btn.disabled = true;
+
+  try {
+    const users = await apiFetch('users');
+
+    const user = users.find(u =>
+      String(u.username).trim().toLowerCase() === login.toLowerCase() &&
+      String(u.password).trim() === pass
+    );
+
+    if (!user) {
+      errEl.textContent = 'Неверный логин или пароль';
+      return;
+    }
+
+    currentUser = user;
+    document.getElementById('topName').textContent = user.username;
+    document.getElementById('profName').textContent = user.username;
+    document.getElementById('profLogin').textContent = user.username;
+    document.getElementById('profRole').textContent = user.role === 'admin' ? 'Администратор' : 'Официант';
+
+    [allTables, menuData] = await Promise.all([apiFetch('tables'), apiFetch('menu')]);
+
+    renderMainPage();
+    showPage('mainPage');
+
+  } catch(err) {
+    errEl.textContent = 'Ошибка подключения. Попробуйте ещё раз.';
+    console.error(err);
+  } finally {
+    btn.textContent = 'Войти';
+    btn.disabled = false;
+  }
+}
+
+/* ── MAIN PAGE ── */
+function renderMainPage() {
+  const openGrid = document.getElementById('openTablesGrid');
+  const allGrid = document.getElementById('allTablesGrid');
+
+  const openTables = allTables.filter(t => orders[t.id] && orders[t.id].length > 0);
+
+  openGrid.innerHTML = openTables.length === 0
+    ? '<div style="color:var(--text-muted);font-size:13px;padding:4px 0">Нет открытых столов</div>'
+    : '';
+
+  openTables.forEach(t => {
+    openGrid.appendChild(makeTableCard(t, true));
+  });
+
+  allGrid.innerHTML = '';
+  allTables.forEach(t => {
+    const isOpen = orders[t.id] && orders[t.id].length > 0;
+    allGrid.appendChild(makeTableCard(t, isOpen));
+  });
+}
+
+function makeTableCard(t, isOpen) {
+  const div = document.createElement('div');
+  div.className = 'table-card' + (isOpen ? ' open' : '');
+  const qty = isOpen ? orders[t.id].reduce((s, i) => s + i.qty, 0) : 0;
+  div.innerHTML = `<div class="table-name">${t.name}</div>
+    <div class="table-status">${isOpen ? qty + ' позиц.' : 'Свободен'}</div>`;
+  div.onclick = () => openTablePage(t);
+  return div;
+}
+
+/* ── TABLE PAGE ── */
+function openTablePage(t) {
+  currentTableId = t.id;
+  document.getElementById('tableTopTitle').textContent = t.name;
+  if (!orders[t.id]) orders[t.id] = [];
+
+  const cats = [...new Set(menuData.map(m => m.category))];
+  activeCat = cats[0] || null;
+
+  renderCatTabs(cats);
+  renderMenuItems();
+  renderOrder();
+  showPage('tablePage');
+}
+
+function renderCatTabs(cats) {
+  const tabs = document.getElementById('catTabs');
+  tabs.innerHTML = '';
+  cats.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-tab' + (cat === activeCat ? ' active' : '');
+    btn.textContent = cat;
+    btn.onclick = () => { activeCat = cat; renderCatTabs(cats); renderMenuItems(); };
+    tabs.appendChild(btn);
+  });
+}
+
+function renderMenuItems() {
+  const container = document.getElementById('menuItems');
+  container.innerHTML = '';
+  const items = menuData.filter(m => m.category === activeCat);
+  items.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'menu-item';
+    row.innerHTML = `<span class="menu-item-name">${m.item}</span>`;
+    const btns = document.createElement('div');
+    btns.className = 'quick-btns';
+    [1, 2, 3, 5].forEach(n => {
+      const b = document.createElement('button');
+      b.className = 'btn-quick';
+      b.textContent = '+' + n;
+      b.onclick = () => addItem(activeCat, m.item, n);
+      btns.appendChild(b);
+    });
+    row.appendChild(btns);
+    container.appendChild(row);
+  });
+}
+
+function addItem(cat, name, qty) {
+  const ord = orders[currentTableId];
+  const idx = ord.findIndex(i => i.cat === cat && i.name === name);
+  if (idx >= 0) ord[idx].qty += qty;
+  else ord.push({ cat, name, qty });
+  renderOrder();
+}
+
+function renderOrder() {
+  const container = document.getElementById('orderList');
+  const ord = orders[currentTableId] || [];
+  if (ord.length === 0) {
+    container.innerHTML = '<div class="order-empty">Заказ пуст</div>';
+    return;
+  }
+  container.innerHTML = '';
+  ord.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'order-item';
+    row.innerHTML = `
+      <div class="order-item-name">
+        ${item.name}
+        <div class="order-item-cat">${item.cat}</div>
+      </div>
+      <div class="order-qty-row">
+        <button class="btn-qty" data-i="${i}" data-d="-1">−</button>
+        <span class="qty-val">${item.qty}</span>
+        <button class="btn-qty" data-i="${i}" data-d="1">+</button>
+      </div>`;
+    container.appendChild(row);
+  });
+
+  container.querySelectorAll('.btn-qty').forEach(btn => {
+    btn.onclick = () => {
+      const i = +btn.dataset.i;
+      const d = +btn.dataset.d;
+      orders[currentTableId][i].qty += d;
+      if (orders[currentTableId][i].qty <= 0) orders[currentTableId].splice(i, 1);
+      renderOrder();
+    };
+  });
+}
+
+function saveOrder() {
+  toast('Заказ сохранён локально');
+  showPage('mainPage');
+  renderMainPage();
+}
+
+async function closeTable() {
+  const ord = orders[currentTableId];
+  if (!ord || ord.length === 0) { toast('Нет позиций'); return; }
+
+  const btn = document.querySelector('.btn-close-table');
+  btn.textContent = 'Отправка...';
+  btn.disabled = true;
+
+  const now = new Date();
+  const payload = {
+    table: currentTableId,
+    user: currentUser.username,
+    date: now.toLocaleDateString('ru-RU'),
+    time: now.toLocaleTimeString('ru-RU'),
+    items: ord
+  };
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    delete orders[currentTableId];
+    toast('Стол закрыт, заказ отправлен');
+    showPage('mainPage');
+    renderMainPage();
+  } catch(err) {
+    toast('Ошибка отправки');
+    console.error(err);
+  } finally {
+    btn.textContent = 'Закрыть стол';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
