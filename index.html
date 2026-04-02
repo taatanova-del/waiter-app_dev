@@ -258,9 +258,59 @@
     border-radius: var(--radius-sm);
     background: var(--bg);
     border: 0.5px solid var(--border);
+    gap: 8px;
   }
 
-  .menu-item-name { font-size: 14px; }
+  .menu-item-name { font-size: 14px; flex: 1; }
+
+  .menu-item-comment {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    border: 0.5px dashed rgba(0,0,0,0.18);
+  }
+
+  .menu-item-comment label {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .comment-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .comment-input {
+    flex: 1;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border);
+    background: var(--surface);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+  }
+
+  .comment-input:focus { border-color: rgba(0,0,0,0.3); }
+
+  .btn-comment-add {
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+
+  .btn-comment-add:hover { opacity: 0.75; }
 
   .quick-btns {
     display: flex;
@@ -282,6 +332,13 @@
 
   .btn-quick:hover { opacity: 0.75; }
   .btn-quick:active { transform: scale(0.95); }
+
+  .admin-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
 
   /* ── ORDER PANEL ── */
   .order-item {
@@ -508,6 +565,14 @@
         <div class="profile-row"><span class="label">Роль</span><span id="profRole"></span></div>
       </div>
     </div>
+    <div id="adminSection" style="display:none; margin-top:16px;">
+      <div class="section-title">Управление данными</div>
+      <div class="admin-actions">
+        <button class="btn-ghost" onclick="reloadTables()">↻ Обновить столы</button>
+        <button class="btn-ghost" onclick="reloadMenu()">↻ Обновить меню</button>
+      </div>
+      <div id="adminMsg" style="font-size:13px;color:var(--text-muted);margin-top:10px;min-height:18px;"></div>
+    </div>
   </div>
 </div>
 
@@ -579,6 +644,11 @@ async function doLogin() {
     document.getElementById('profLogin').textContent = user.username;
     document.getElementById('profRole').textContent = user.role === 'admin' ? 'Администратор' : 'Официант';
 
+    if (user.role === 'admin') {
+      document.getElementById('adminSection').style.display = 'block';
+    }
+
+    // Загружаем столы и меню один раз при входе
     [allTables, menuData] = await Promise.all([apiFetch('tables'), apiFetch('menu')]);
 
     renderMainPage();
@@ -593,6 +663,33 @@ async function doLogin() {
   }
 }
 
+/* ── ADMIN RELOAD ── */
+async function reloadTables() {
+  const msg = document.getElementById('adminMsg');
+  msg.textContent = 'Загрузка столов...';
+  try {
+    allTables = await apiFetch('tables');
+    renderMainPage();
+    msg.textContent = '✓ Столы обновлены (' + allTables.length + ' шт.)';
+    setTimeout(() => msg.textContent = '', 3000);
+  } catch(e) {
+    msg.textContent = 'Ошибка загрузки столов';
+  }
+}
+
+async function reloadMenu() {
+  const msg = document.getElementById('adminMsg');
+  msg.textContent = 'Загрузка меню...';
+  try {
+    menuData = await apiFetch('menu');
+    const cats = [...new Set(menuData.map(m => m.category))];
+    msg.textContent = '✓ Меню обновлено (' + cats.length + ' категорий, ' + menuData.length + ' позиций)';
+    setTimeout(() => msg.textContent = '', 3000);
+  } catch(e) {
+    msg.textContent = 'Ошибка загрузки меню';
+  }
+}
+
 /* ── MAIN PAGE ── */
 function renderMainPage() {
   const openGrid = document.getElementById('openTablesGrid');
@@ -604,9 +701,7 @@ function renderMainPage() {
     ? '<div style="color:var(--text-muted);font-size:13px;padding:4px 0">Нет открытых столов</div>'
     : '';
 
-  openTables.forEach(t => {
-    openGrid.appendChild(makeTableCard(t, true));
-  });
+  openTables.forEach(t => openGrid.appendChild(makeTableCard(t, true)));
 
   allGrid.innerHTML = '';
   allTables.forEach(t => {
@@ -656,21 +751,53 @@ function renderMenuItems() {
   const container = document.getElementById('menuItems');
   container.innerHTML = '';
   const items = menuData.filter(m => m.category === activeCat);
+
   items.forEach(m => {
-    const row = document.createElement('div');
-    row.className = 'menu-item';
-    row.innerHTML = `<span class="menu-item-name">${m.item}</span>`;
-    const btns = document.createElement('div');
-    btns.className = 'quick-btns';
-    [1, 2, 3, 5].forEach(n => {
-      const b = document.createElement('button');
-      b.className = 'btn-quick';
-      b.textContent = '+' + n;
-      b.onclick = () => addItem(activeCat, m.item, n);
-      btns.appendChild(b);
-    });
-    row.appendChild(btns);
-    container.appendChild(row);
+    const isEmpty = !m.item || String(m.item).trim() === '';
+
+    if (isEmpty) {
+      // Поле для произвольного комментария
+      const wrap = document.createElement('div');
+      wrap.className = 'menu-item-comment';
+      wrap.innerHTML = `<label>Произвольная позиция (${activeCat})</label>`;
+      const row = document.createElement('div');
+      row.className = 'comment-row';
+      const input = document.createElement('input');
+      input.className = 'comment-input';
+      input.type = 'text';
+      input.placeholder = 'Введите название...';
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn-comment-add';
+      addBtn.textContent = '+1';
+      addBtn.onclick = () => {
+        const val = input.value.trim();
+        if (!val) { input.focus(); return; }
+        addItem(activeCat, val, 1);
+        input.value = '';
+        input.focus();
+      };
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') addBtn.click(); });
+      row.appendChild(input);
+      row.appendChild(addBtn);
+      wrap.appendChild(row);
+      container.appendChild(wrap);
+    } else {
+      // Обычный товар
+      const row = document.createElement('div');
+      row.className = 'menu-item';
+      row.innerHTML = `<span class="menu-item-name">${m.item}</span>`;
+      const btns = document.createElement('div');
+      btns.className = 'quick-btns';
+      [1, 2, 3].forEach(n => {
+        const b = document.createElement('button');
+        b.className = 'btn-quick';
+        b.textContent = '+' + n;
+        b.onclick = () => addItem(activeCat, m.item, n);
+        btns.appendChild(b);
+      });
+      row.appendChild(btns);
+      container.appendChild(row);
+    }
   });
 }
 
