@@ -639,12 +639,14 @@ async function doLogin() {
     }
 
     currentUser = user;
+    currentUser.role = String(user.role || '').trim().toLowerCase();
     document.getElementById('topName').textContent = user.username;
     document.getElementById('profName').textContent = user.username;
     document.getElementById('profLogin').textContent = user.username;
-    document.getElementById('profRole').textContent = user.role === 'admin' ? 'Администратор' : 'Официант';
+    const role = String(user.role || '').trim().toLowerCase();
+    document.getElementById('profRole').textContent = role === 'admin' ? 'Администратор' : 'Официант';
 
-    if (user.role === 'admin') {
+    if (role === 'admin') {
       document.getElementById('adminSection').style.display = 'block';
     }
 
