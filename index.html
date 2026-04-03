@@ -565,6 +565,9 @@
         <div class="profile-row"><span class="label">Роль</span><span id="profRole"></span></div>
       </div>
     </div>
+    <div style="margin-top:16px;">
+      <button class="btn-ghost" style="color:#c0392b;border-color:rgba(192,57,43,0.3);" onclick="logout()">Выйти из аккаунта</button>
+    </div>
     <div id="adminSection" style="display:none; margin-top:16px;">
       <div class="section-title">Управление данными</div>
       <div class="admin-actions">
@@ -655,6 +658,7 @@ async function doLogin() {
 
     renderMainPage();
     showPage('mainPage');
+    startSessionCheck();
 
   } catch(err) {
     errEl.textContent = 'Ошибка подключения. Попробуйте ещё раз.';
@@ -665,7 +669,44 @@ async function doLogin() {
   }
 }
 
-/* ── ADMIN RELOAD ── */
+let sessionCheckInterval = null;
+
+/* ── SESSION CHECK ── */
+function startSessionCheck() {
+  if (sessionCheckInterval) clearInterval(sessionCheckInterval);
+  sessionCheckInterval = setInterval(async () => {
+    if (!currentUser) return;
+    try {
+      const users = await apiFetch('users');
+      const still = users.find(u =>
+        String(u.username).trim().toLowerCase() === currentUser.username.toLowerCase()
+      );
+      if (!still) {
+        toast('Сессия завершена. Войдите заново.');
+        setTimeout(logout, 1500);
+      }
+    } catch(e) {
+      // не выкидываем при ошибке сети — просто пропускаем проверку
+    }
+  }, 5 * 60 * 1000); // каждые 5 минут
+}
+
+function logout() {
+  if (sessionCheckInterval) { clearInterval(sessionCheckInterval); sessionCheckInterval = null; }
+  currentUser = null;
+  allTables = [];
+  menuData = [];
+  orders = {};
+  currentTableId = null;
+  activeCat = null;
+  document.getElementById('inputLogin').value = '';
+  document.getElementById('inputPass').value = '';
+  document.getElementById('loginErr').textContent = '';
+  document.getElementById('adminSection').style.display = 'none';
+  showPage('loginPage');
+}
+
+
 async function reloadTables() {
   const msg = document.getElementById('adminMsg');
   msg.textContent = 'Загрузка столов...';
